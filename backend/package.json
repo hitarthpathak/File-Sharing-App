@@ -1,0 +1,22 @@
+{
+  "name": "file-sharing-app",
+  "version": "1.0.0",
+  "description": "A Full-Stack File Sharing Web Application.",
+  "keywords": [
+    "file-sharing",
+    "firebase"
+  ],
+  "license": "ISC",
+  "author": "Hitarth Pathak",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.5",
+    "express": "^5.2.1",
+    "nodemailer": "^10.0.14"
+  }
+}

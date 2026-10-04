@@ -1,0 +1,59 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner() {
+      return isSignedIn() && request.auth.uid == resource.data.owner_id;
+    }
+    function isOwnerOnCreate() {
+      return isSignedIn() && request.auth.uid == request.resource.data.owner_id;
+    }
+    function userEmail() {
+      return request.auth.token.email.lower();
+    }
+    function isSharedWithMe() {
+      return isSignedIn() && userEmail() in resource.data.shared_with;
+    }
+    function isFavouritedByMe() {
+      return isSignedIn() && userEmail() in resource.data.favourited_by;
+    }
+    function onlyTogglingOwnFavourite() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      let oldFavs = resource.data.favourited_by.toSet();
+      let newFavs = request.resource.data.favourited_by.toSet();
+      let added = newFavs.difference(oldFavs);
+      let removed = oldFavs.difference(newFavs);
+      return affected.hasOnly(['favourited_by'])
+        && added.size() + removed.size() == 1
+        && (userEmail() in added || userEmail() in removed);
+    }
+    match /user_files/{fileId} {
+      allow read: if isSignedIn() && (
+        isOwner() ||
+        isSharedWithMe() ||
+        isFavouritedByMe()
+      );
+      allow create: if isOwnerOnCreate()
+        && request.resource.data.type == "file"
+        && request.resource.data.shared_with == []
+        && request.resource.data.favourited_by == []
+        && request.resource.data.keys().hasAll([
+          'name', 'type', 'file_type', 'parent_id',
+          'owner_id', 'size', 'storage_path', 'download_url',
+          'shared_with', 'favourited_by', 'created_at'
+        ]);
+      allow update: if isSignedIn() && (
+        (isOwner() && request.resource.data.owner_id == resource.data.owner_id)
+        ||
+        onlyTogglingOwnFavourite()
+      );
+      allow delete: if isOwner();
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
